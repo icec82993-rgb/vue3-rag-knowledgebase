@@ -164,28 +164,76 @@ const rawMarkdownTemplate = `### 🤖 知识库助手已就绪
 
 *以上内容完全基于私有知识库检索生成，未触发公网幻觉。*`
 
-const streamLLMResponse = () => {
+// 6. 真实接入大模型 API（标准 OpenAI/DeepSeek 协议流式 Fetch）
+const streamLLMResponse = async () => {
   if (isGenerating.value) return
   isGenerating.value = true
   llmOutput.value = ''
-  
-  let currentText = ''
-  let index = 0
-  
-  const timer = setInterval(async () => {
-    if (index < rawMarkdownTemplate.length) {
-      currentText += rawMarkdownTemplate[index]
-      llmOutput.value = currentText
-      index++
+
+  try {
+    // 💡 面试高光点：利用标准 Web API Fetch 发起流式 POST 请求
+    const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // ⚠️ 生产环境下此 Key 应由中转后端注入，此处用于前端敏捷全栈联调演示
+        'Authorization': `Bearer 你的_DEEPSEEK_API_KEY` 
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat', // 使用 DeepSeek 官方标准对话模型
+        messages: [
+          { role: 'user', content: assembledPrompt.value } // 将你动态组装的 RAG 增强 Prompt 喂给大模型
+        ],
+        stream: true // 🔥 核心：开启 SSE 真·流式吐字模式
+      })
+    })
+
+    if (!response.ok) throw new Error(`网络请求异常，状态码: ${response.status}`)
+
+    // 💡 面试绝杀点：前端通过 ReadableStream 进行底层二进制流的逐步解析
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      // 将二进制 Buffer 转换为前端文本块
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
       
-      await nextTick()
-      const display = document.getElementById('responseDisplay')
-      if (display) display.scrollTop = display.scrollHeight
-    } else {
-      clearInterval(timer)
-      isGenerating.value = false
+      // 保存未读完的半行数据留在缓冲区
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const cleanedLine = line.trim()
+        if (!cleanedLine) continue
+        if (cleanedLine === 'data: [DONE]') break // SSE 传输结束标识
+
+        if (cleanedLine.startsWith('data: ')) {
+          try {
+            const parsed = JSON.parse(cleanedLine.replace('data: ', ''))
+            const deltaContent = parsed.choices[0]?.delta?.content || ''
+            
+            // 响应式逐字追加渲染，触发 parsedMarkdown 的正则动态解析
+            llmOutput.value += deltaContent
+
+            // 丝滑滚动：让展示区域跟随吐字节奏自适应向下滚动
+            await nextTick()
+            const display = document.getElementById('responseDisplay')
+            if (display) display.scrollTop = display.scrollHeight
+          } catch (e) {
+            // 容错处理：忽略非标准 JSON 行
+          }
+        }
+      }
     }
-  }, 35)
+  } catch (error) {
+    llmOutput.value = `❌ [API 通信故障]: ${error.message} \n请检查本地网络或是否正确配置了有效的 API Key。`
+  } finally {
+    isGenerating.value = false
+  }
 }
 
 // 7. 原生正则 Markdown 解析器
