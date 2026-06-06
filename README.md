@@ -1,32 +1,201 @@
-# Vue 3 Secure RAG Pipeline & SSE Stream Hub
-> **基于 Vue 3 (Composition API) 与原生的 RAG 增强提示词编排及真·大模型 SSE 流式响应看板**
+# Vue3 RAG Knowledge Base Demo
 
-## 🌟 核心工程背景 (Engineering Context)
-在企业级生产环境中，大模型（LLM）应用的落地普遍面临三大工程挑战：
-1. **RAG 链路透明度低**：用户输入提问后，向量切片如何召回、系统 Prompt 如何动态拼接，在传统架构中属于“黑盒”，给提示词调优（Prompt Engineering）带来极大困难。
-2. **长文本响应卡顿**：大模型单次生成可能耗时数十秒，若采用传统的 HTTP 轮询或单次等待返回，会导致前端界面长时间陷入白屏死锁，极度损害用户体验。
-3. **第三方 SDK 臃肿**：引入庞大的重量级大模型服务链 SDK 会导致前端打包体积膨胀。
-
-本项目完全使用 **Vue 3 响应式机制** 底层重构，从零实现了**仿真向量知识注入、动态检索召回、实时 Prompt 组装**的全链路，并采用纯原生 Web API 攻克了 **DeepSeek 大模型 Server-Sent Events (SSE) 异步流式文本流控制**，是一款专为 AI 研发端量身打造的 RAG 调试控制台。
+基于 Vue 3 + Vite 构建的智能知识库检索与 Prompt 调试平台，通过知识片段匹配模拟 RAG（Retrieval-Augmented Generation）流程，实现知识检索、Prompt 动态编排、大模型流式生成与结果展示。
 
 ---
 
-## 🛠️ 硬核技术栈与架构设计 (Architecture & Tech Stack)
-* **前端骨架**：Vue 3 (SFC) + Vite + Tailwind/Custom Dark Sci-Fi CSS（全屏硬核科技暗黑视觉）
-* **数据驱动层**：基于 Vue 3 的 `ref` 与 `computed` 构建高频响应式状态机。
-* **数据流通信**：标准 Web Fetch API + `ReadableStream`（无第三方 SDK 依赖）
-* **Markdown 解析层**：高性能原生正则表达式动态文本流清洗器。
+## 📖 项目简介
+
+本项目旨在可视化展示 RAG（检索增强生成）的核心工作流程，帮助理解知识库检索、上下文构建以及大模型生成回答之间的协作关系。
+
+用户输入问题后，系统会从本地知识库中匹配相关知识片段，动态构建 Prompt 上下文，并调用大模型 API 生成回答，实现从检索到生成的完整链路展示。
 
 ---
 
-## 🔥 核心技术亮点与面试高光点 (Key Features & Interview Highlights)
+## 🚀 技术栈
 
-### 1. 基于 `ReadableStream` 的底层 SSE 真·流式吐字控制
-* **工程痛点**：大模型流式接口返回的是 `text/event-stream` 类型数据。
-* **解法与亮点**：告别市面上常见的 `setInterval` 假模拟。本项目直接通过原生 `fetch` 建立流式 POST 管道，利用 `response.body.getReader()` 逐块读取底层二进制流。通过 `TextDecoder` 动态转换并处理粘包、断包碎片，提取 `data: ` 前缀背后的 Delta 文本内容，实现低延迟、零内存积压的秒级响应渲染。
+- Vue 3
+- Composition API
+- Vite
+- Fetch API
+- ReadableStream
+- SSE（Server-Sent Events）
+- Git
 
-### 2. 响应式自适应 RAG 语义检索与切片召回引擎
-* **设计细节**：利用 Vue 3 的 `computed` 依赖收集特性，对模拟向量库（Vector DB Table）实现秒级多关键词模糊检索沙箱。当用户输入 `User Query` 时，检索引擎实现微秒级切片自适应计算与排序，动态输出 Cosine 相似度得分，直观展示召回机制。
+---
 
-### 3. 动态系统 Prompt 上下文自动组装机制
-* **设计细节**：严格遵循大
+## ✨ 核心功能
+
+### 1. 知识库管理
+
+支持本地知识片段录入与维护。
+
+```text
+用户录入知识
+    ↓
+存入知识库
+    ↓
+等待匹配检索
+```
+
+### 2. 知识片段匹配
+
+根据用户输入内容进行关键词匹配，筛选相关知识片段。
+
+```text
+用户问题
+    ↓
+关键词匹配
+    ↓
+召回相关知识片段
+```
+
+### 3. Prompt 动态编排
+
+基于匹配到的知识片段自动构建 Prompt。
+
+```text
+System Prompt
+      +
+知识片段
+      +
+用户问题
+      ↓
+生成完整 Prompt
+```
+
+### 4. 大模型接口调用
+
+基于 Fetch API 调用大模型接口。
+
+```javascript
+const response = await fetch(apiUrl)
+```
+
+### 5. 流式响应展示
+
+利用 ReadableStream 实现实时内容解析与增量渲染。
+
+```text
+模型输出
+    ↓
+SSE数据流
+    ↓
+ReadableStream解析
+    ↓
+实时展示
+```
+
+### 6. Prompt 调试看板
+
+支持查看：
+
+- 用户输入
+- 匹配知识片段
+- Prompt 构建结果
+- 模型生成结果
+
+方便分析检索与生成过程。
+
+---
+
+## 📂 项目结构
+
+```text
+src
+│
+├── App.vue
+│
+├── 用户输入模块
+├── 知识库匹配模块
+├── Prompt构建模块
+├── 模型调用模块
+└── 流式输出模块
+```
+
+---
+
+## 🎯 项目亮点
+
+### Vue3 响应式状态管理
+
+使用：
+
+- ref
+- computed
+- nextTick
+
+实现响应式数据流管理。
+
+### Prompt 动态生成
+
+根据用户问题自动拼接知识片段与上下文信息，完成 Prompt 编排。
+
+### 流式文本渲染
+
+基于：
+
+- Fetch API
+- ReadableStream
+- TextDecoder
+
+实现大模型实时输出效果。
+
+---
+
+## 🔄 RAG 流程示意
+
+```text
+用户提问
+    │
+    ▼
+知识片段匹配
+    │
+    ▼
+Prompt动态构建
+    │
+    ▼
+大模型API调用
+    │
+    ▼
+流式响应解析
+    │
+    ▼
+结果展示
+```
+
+---
+
+## 💡 学习收获
+
+通过本项目掌握：
+
+- Vue3 Composition API 开发模式
+- 响应式状态管理
+- computed 派生状态设计
+- Fetch API 网络请求
+- ReadableStream 流式响应处理
+- Prompt 工程基础
+- RAG 工作流程理解
+- Git 版本管理与 Rebase 使用
+
+---
+
+## 🛠️ 本地运行
+
+```bash
+# 安装依赖
+npm install
+
+# 启动开发环境
+npm run dev
+
+# 项目构建
+npm run build
+```
+
+---
+
+## 📌 项目定位
+
+本项目定位为基于 Vue3 的 RAG 流程演示与 Prompt 调试平台，重点展示知识检索、上下文构建、流式响应解析与生成结果展示的完整链路，适用于学习 Vue3、Prompt Engineering 与 RAG 基础流程。
